@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\ExcelParserInterface;
+use App\Services\ExcelParser;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +13,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ExcelParser::class, function () {
+            return new ExcelParser();
+        });
+
+        $this->app->bind(ExcelParserInterface::class, ExcelParser::class);
     }
 
     /**

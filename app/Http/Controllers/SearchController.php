@@ -3,15 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\ExcelParser;
+use App\Http\Requests\SearchPostRequest;
+use App\Services\ExcelParserInterface;
+use Config;
 
 class SearchController extends Controller
 {
 
-    //should be moved to a configuration DI
-    final public const DATA_SOURCE = '/../data/file.xlsx';
-
-    public function __construct(private ExcelParser $excelParser)
+    public function __construct(private ExcelParserInterface $excelParser)
     {
     }
 
@@ -20,23 +19,17 @@ class SearchController extends Controller
         return view('search-filter');
     }
 
-    public function search(Request $request)
+    public function search(SearchPostRequest $request)
     {
-        $filters = [
-            'ram' => $request->input('ram') ?? '',
-            'storage' => $request->input('storage') ?? '',
-            'harddiskType' => $request->input('harddiskType') ?? '',
-            'location' => $request->input('location') ?? ''
-        ];
-
-        //implement filter validation service and use here
+        $filters = $request->validated();
+        $viewVars = ['serverList' => [], 'error' => ''];
 
         try {
-            $serverList = $this->excelParser->searchData($filters, getcwd() . self::DATA_SOURCE);
+            $viewVars['serverList'] = $this->excelParser->searchData($filters, getcwd() . config('app.data_source'));
         } catch (\Exception $e) {
-            // handle error case here
+            $viewVars['error'] = $e->getMessage();
         }
 
-        return view('search-result', ['serverList' => $serverList]);
+        return view('search-result', $viewVars);
     }
 }

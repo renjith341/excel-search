@@ -8,7 +8,7 @@ use Box\Spout\Reader\Common\Creator\ReaderEntityFactory;
 use Box\Spout\Reader\Exception\ReaderNotOpenedException;
 use App\Models\ServerInfo;
 
-class ExcelParser
+class ExcelParser implements ExcelParserInterface
 {
     final public const GB = 'GB';
     final public const TB = 'TB';
@@ -32,7 +32,7 @@ class ExcelParser
                     continue;
                 }
                 $rowData = $row->toArray();
-                if ($this->hasRam($rowData[1]) && $this->hasStorage($rowData[2]) && $this->hasHarddidkType($rowData[2]) && $this->hasLocation($rowData[3]))
+                if ($this->isMatchingRam($rowData[1]) && $this->isMatchingStorage($rowData[2]) && $this->isMatchingDiskType($rowData[2]) && $this->isMatchingLocation($rowData[3]))
                     $serverList[] = (new ServerInfo)->setModel($rowData[0])
                         ->setRam($rowData[1])
                         ->setStorage($rowData[2])
@@ -45,21 +45,25 @@ class ExcelParser
         return $serverList;
     }
 
-    private function hasRam(string|array $ram): bool
+    private function isMatchingRam(string $ram): bool
     {
-        if ($this->filters['ram'] == '') return true;
+        if (!array_key_exists('ram', $this->filters) || is_null($this->filters['ram'])) return true;
         $ramValue = explode(self::GB, $ram);
 
         return in_array($ramValue[0], $this->filters['ram']);
     }
 
-    private function hasStorage(string $storage): bool
+    private function isMatchingStorage(string $storage): bool
     {
-        if ($this->filters['storage'] == '') return true;
-        $storage = $this->parseStorageValue($storage);
-        $filter = $this->getStorageRange($this->filters['storage']);
+        if ((!array_key_exists('storageFrom', $this->filters) || is_null($this->filters['storageFrom'])) &&
+            (!array_key_exists('storageTo', $this->filters) || is_null($this->filters['storageTo']))
+        ) {
+            return true;
+        }
 
-        return $storage >= $filter[0] && $storage <= $filter[1];
+        $storage = $this->parseStorageValue($storage);
+
+        return $storage >= $this->storageInGB($this->filters['storageFrom']) && $storage <= $this->storageInGB($this->filters['storageTo']);
     }
 
     private function parseStorageValue(string $storage): int
@@ -77,35 +81,24 @@ class ExcelParser
         return $storageSize;
     }
 
-    private function getStorageRange(string $storageRange): array
-    {
-        $range = explode(' - ', $storageRange);
-        $range[0] = $this->storageInGB($range[0]);
-        $range[1] = $this->storageInGB($range[1]);
-
-        return $range;
-    }
-
     private function storageInGB(string $value): int
     {
         if (strpos($value, self::TB)) {
-            $value  = str_replace(' ' . self::TB, '', $value) * 1024;
+            $value  = str_replace(self::TB, '', $value) * 1024;
         } else if (strpos($value, self::GB)) {
-            $value  = str_replace(' ' . self::GB, '', $value);
+            $value  = str_replace(self::GB, '', $value);
         }
 
         return $value;
     }
 
-    private function hasHarddidkType(string $hdd): bool
+    private function isMatchingDiskType(string $hdd): bool
     {
-        if ($this->filters['harddiskType'] == '') return true;
-
-        return strpos($hdd, $this->filters['harddiskType']) !== false;
+        return !array_key_exists('harddiskType', $this->filters) || is_null($this->filters['harddiskType']) || (strpos($hdd, $this->filters['harddiskType']) !== false);
     }
 
-    private function hasLocation(string $location): bool
+    private function isMatchingLocation(string $location): bool
     {
-        if ($this->filters['location'] == '') return true;
+        return !array_key_exists('location', $this->filters) || is_null($this->filters['location']) || ($location == $this->filters['location']);
     }
 }

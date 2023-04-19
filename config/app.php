@@ -211,5 +211,6 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'ExampleClass' => App\Example\ExampleClass::class,
     ])->toArray(),
-
+    
+    'data_source' => env('DATA_SOURCE'),
 ];
